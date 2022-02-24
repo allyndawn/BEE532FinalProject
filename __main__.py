@@ -1,14 +1,19 @@
-from cmath import sqrt
+from math import ceil
 import numpy
 
 # Constants
 speed_of_sound = 1540 # m/s
 
-# Configuration, e.g. ATL L7-4
+# Transducer Config, e.g. ATL L7-4
 center_frequency = 5.2E6 # frequency in MHz
-sampling_frequency = 4 * center_frequency # sampling rate in MHz
+sampling_rate = 4 * center_frequency # sampling rate in MHz
 num_elements = 128
 pitch = 0.000245 # pitch in m, e.g. 0.000245 = 0.245 mm
+
+# Scan Config
+theta = numpy.deg2rad(0)
+beta = numpy.deg2rad(30)
+scan_depth = 0.10 # scan depth in m, e.g. 0.10 = 10 cm
 
 class Point:
     x: float = 0.0
@@ -31,7 +36,23 @@ def heaviside(a:float) -> float:
         return 1.0
     return 0.0
 
+def generate_complex_2d_array(num_rows:int, num_columns:int):
+    result = numpy.zeros((num_rows, num_columns)).astype(complex)
+    # TODO - include something reflecting a signal in the 2d space 
+    return result
+
 if __name__ == "__main__":
+    # First, calculate the number of samples we expect per line. To do so, take the max scan depth, multiply it
+    # by 2 (for round trip) divide that by the speed of sound to get the max round trip time.
+    # Multiply that by the sampling rate to get the max number of samples for a line.
+    num_samples_per_line = ceil(scan_depth * (2 / speed_of_sound) * sampling_rate)
+
+    # Now, generate a complex input signal. It should be two dimensional when the 1st dimension is element number
+    # and the 2nd dimension is the (un-beamformed) RF sample index for that element
+    input_signal = generate_complex_2d_array(num_elements, num_samples_per_line)
+
+    # TODO plot the un-beamformed signal
+
     # Calculate the transducer element centers as an array of num_elements
     # Center the elements along the x axis
     array_width = (num_elements - 1) * pitch
@@ -45,8 +66,8 @@ if __name__ == "__main__":
     # Let theta be the desired tilt from the z axis in radians
     # Let beta be the desired beamwidth in radians
     # For now, don't allow the virtual source y to be non zero
-    theta = numpy.deg2rad(0)
-    beta = numpy.deg2rad(30)
+    # theta = numpy.deg2rad(0)
+    # beta = numpy.deg2rad(30)
 
     virtual_source_x = (array_width / 2) * numpy.sin(2 * theta) / numpy.sin(beta)
     virtual_source_y = 0.0
@@ -57,6 +78,9 @@ if __name__ == "__main__":
     # Define a (single) focus centered 5 cm below the face of the transducer
     # For now, don't allow the focus y to be non zero
     focus_position = Point(0, 0, 0.05)
+
+    # Quick and dirty f-number needed for that depth
+    f_number = focus_position.z / array_width
 
     # Calculate distances_rx from the focus_position to each transducer element
     rx_distances = []
@@ -83,11 +107,27 @@ if __name__ == "__main__":
     # Convert each two way travel time into the corresponding fast-time index
     # by multiplying the sampling frequency (e.g. 20E6 samples/sec) by the
     # time offset
-    index_times = []
+    fast_time_indices = []
     for el in range(num_elements):
-        index_time = two_way_travel_times[el] * sampling_frequency
-        index_times.append(index_time)
+        fast_time_index = two_way_travel_times[el] * sampling_rate
+        fast_time_indices.append(fast_time_index)
 
-    for index_time in index_times:
-        print(index_time)
+    # Generate a true/false vector based on whether each element's fast time index is within bounds
+    fast_time_index_in_bounds_array = []
+    for el in range(num_elements):
+        fast_time_index_in_bounds = fast_time_indices[el] < num_samples_per_line
+        fast_time_index_in_bounds_array.append(fast_time_index_in_bounds)
 
+    # Generate a true/false vector based on whether the focus is within the element's field of view
+    focus_in_element_field_of_view_array = []
+    for el in range(num_elements):
+        delta_x = abs(focus_position.x - element_positions[el].x)
+        scaled_z = focus_position.z / 2.0 / f_number
+        focus_in_element_field_of_view = delta_x < scaled_z
+        focus_in_element_field_of_view_array.append(focus_in_element_field_of_view)
+
+    # Combine these into a single vector on whether those two constains are both met
+    element_is_viable_for_beamforming_to_focus_array = []
+    for el in range(num_elements):
+        element_is_viable_for_beamforming_to_focus = fast_time_index_in_bounds_array[el] and \
+            focus_in_element_field_of_view_array[el]
