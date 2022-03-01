@@ -148,27 +148,41 @@ if __name__ == "__main__":
     # We want to at this point create a massive column vector that we can multiply the input signal
     # by to shift each element's samples to properly beamform them.
 
-    # The first step is to create an indexing row vector for each element
-    # To do this, we take the fast_time_indices and add to each "index" an offset
-    # into the massive column vector (except the first element, which has an offset of 0)
-    #
-    # For example, the fast_time_index for the first element has 0 added to it,
-    # the fast_time_index for the second element has num_samples_per_line added to it,
-    # the third, 2 * num_samples_per_line and so on and so forth
-    #
+    # The first step is to create a row vector containing time offsets to be applied
+    # to each element
+
+    # To do this, we take each element's fast_time_index (the number of samples it takes to get to
+    # the focus point and back) and add to each an offset
+
+    # The offset is equal to the element number (starting at zero) times the num_samples_per_line
+
     # This spaces out all the lines so they don't overlap when we pack them in the massive column vector
 
-    index_array = []
+    offset_array = []
     for el in range(num_elements):
-        index = fast_time_indices[el] + el * num_samples_per_line
-        index_array.append(index)
+        offset = fast_time_indices[el] + el * num_samples_per_line
+        offset_array.append(offset)
 
-    # We then discard all those elements that are not viable for beamforming
-    viable_index_array = []
+    # We're going to use these offsets to populate a spare matrix (a matrix where most elements are zero)
+    # So, we can skip processing all those elements that are not viable for beamforming
+    viable_offset_array = []
     for el in range(num_elements):
         if element_is_viable_for_beamforming_to_focus_array[el]:
-            viable_index_array.append(index_array[el])
+            viable_offset_array.append(offset_array[el])
 
-    num_viable_elements = len(viable_index_array)
-    print(num_viable_elements)
+    num_viable_elements = len(viable_offset_array)
+    print(viable_offset_array)
+
+    # These offsets have fractional components. Let's get the integer index of the samples adjacent
+    # to each element's offset and subtract from it the index.
+
+    # For example, if we have an index of 222342.3, the floor would be 222342 and 222342 - 222342.3 = -.3
+
+    viable_offset_first_sample_weight_array = []
+    for el in range(len(viable_offset_array)):
+        floor_offset = int(viable_offset_array[el])
+        viable_offset_first_sample_weight_array.append(floor_offset - viable_offset_array[el])
+
+    for el in range(len(viable_offset_first_sample_weight_array)):
+        print("viable_offset_first_sample_weight_array", viable_offset_first_sample_weight_array[el])
 
