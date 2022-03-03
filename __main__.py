@@ -47,4 +47,7 @@ if "__main__" == __name__:
     fig, ax = plt.subplots()
     ax.imshow(RF, cmap='gray', aspect='auto', vmin=0, vmax=78)
     ax.set_facecolor("black")
+    ax.set_xlabel('Transducer element number')
+    ax.set_ylabel('Discretized depth')
+    fig.suptitle('Un-beamformed RF')
     plt.show()
