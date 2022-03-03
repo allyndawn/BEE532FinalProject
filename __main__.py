@@ -1,5 +1,7 @@
 import json
 from marshmallow import EXCLUDE, Schema, fields, ValidationError
+import matplotlib as mpl
+import matplotlib.pyplot as plt
 import numpy
 
 RF_filename = 'L11-5V.json'
@@ -38,5 +40,11 @@ if "__main__" == __name__:
     print("Transducer name:", data['transducer_name'])
     print("RF len:", len(data['RF']), "rows")
 
-    # Plot the unbeamformed RF
+    # Plot the un-beamformed RF
+    RF = numpy.array(data['RF'])
+    RF = 20 * numpy.log(numpy.abs(RF))
 
+    fig, ax = plt.subplots()
+    ax.imshow(RF, cmap='gray', aspect='auto', vmin=0, vmax=78)
+    ax.set_facecolor("black")
+    plt.show()
