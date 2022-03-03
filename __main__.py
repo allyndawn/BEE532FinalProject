@@ -103,6 +103,10 @@ if __name__ == "__main__":
     tx_distance = unadjusted_tx_distance - adjustment
 
     # Calculate the two way travel times (tau) for each element
+    #
+    # MATLAB:
+    # tau = (dTX+dRX)/param.c;
+
     two_way_travel_times = []
     for el in range(num_elements):
         two_way_travel_time = (tx_distance + rx_distances[el]) / speed_of_sound
@@ -118,6 +122,10 @@ if __name__ == "__main__":
     #
     # e.g. values for the fast_time_indices may range from 1294.7 for the edge elements
     # to as little as 1185.4 for the center elements
+    #
+    # MATLAB:
+    # idxt = tau*param.fs + 1;
+
     fast_time_indices = []
     for el in range(num_elements):
         fast_time_index = two_way_travel_times[el] * sampling_rate
@@ -125,12 +133,20 @@ if __name__ == "__main__":
 
     # Generate a true/false vector based on whether each element's fast time index is within bounds
     # e.g. Num samples per line = 1812
+    #
+    # MATLAB:
+    # I = idxt>1 & idxt<nl-1;
+
     fast_time_index_in_bounds_array = []
     for el in range(num_elements):
         fast_time_index_in_bounds = fast_time_indices[el] < num_samples_per_line
         fast_time_index_in_bounds_array.append(fast_time_index_in_bounds)
 
     # Generate a true/false vector based on whether the focus is within the element's field of view
+    #
+    # MATLAB:
+    # Iaperture = abs(x-xe)<=(z/2/param.fnumber);
+
     focus_in_element_field_of_view_array = []
     for el in range(num_elements):
         delta_x = abs(focus_position.x - element_positions[el].x)
@@ -139,6 +155,10 @@ if __name__ == "__main__":
         focus_in_element_field_of_view_array.append(focus_in_element_field_of_view)
 
     # Combine these into a single vector on whether those two constraints are both met
+    #
+    # MATLAB:
+    # I = I&Iaperture;
+
     element_is_viable_for_beamforming_to_focus_array = []
     for el in range(num_elements):
         element_is_viable_for_beamforming_to_focus = fast_time_index_in_bounds_array[el] and \
@@ -158,6 +178,9 @@ if __name__ == "__main__":
 
     # This spaces out all the lines so they don't overlap when we pack them in the massive column vector
 
+    # MATLAB:
+    # idx = idxt + (0:nc-1)*nl;
+
     offset_array = []
     for el in range(num_elements):
         offset = fast_time_indices[el] + el * num_samples_per_line
@@ -165,6 +188,10 @@ if __name__ == "__main__":
 
     # We're going to use these offsets to populate a spare matrix (a matrix where most elements are zero)
     # So, we can skip processing all those elements that are not viable for beamforming
+    #
+    # MATLAB:
+    # idx = idx(I);
+
     viable_offset_array = []
     for el in range(num_elements):
         if element_is_viable_for_beamforming_to_focus_array[el]:
@@ -177,6 +204,9 @@ if __name__ == "__main__":
     # to each element's offset and subtract from it the index.
 
     # For example, if we have an index of 222342.3, the floor would be 222342 and 222342 - 222342.3 = -.3
+    # MATLAB:
+    # idxf = floor(idx);
+    # idx = idxf - idx;
 
     viable_offset_first_sample_weight_array = []
     for el in range(len(viable_offset_array)):
@@ -185,4 +215,17 @@ if __name__ == "__main__":
 
     for el in range(len(viable_offset_first_sample_weight_array)):
         print("viable_offset_first_sample_weight_array", viable_offset_first_sample_weight_array[el])
+
+    # Let's do it as a non sparse matrix for starters
+    # It will be a single row
+    # It will have num_elements * num_samples_per_line columns
+
+    # MATLAB:
+    # [i,~] = find(I);
+    # s = [idx+1;-idx];
+    # if ~isreal(SIG) % SIG is real in this test 
+    # s = s.*exp(2i*pi*param.fc*[tau(I);tau(I)]);
+    # end
+    # M = sparse([i;i],[idxf;idxf+1],s,numel(x),nl*nc); % 1r x 231936c (row vector)
+    # bfSIG = reshape(M*SIG(:),1,[]);
 
