@@ -3,6 +3,7 @@ from marshmallow import EXCLUDE, Schema, fields, ValidationError
 import matplotlib as mpl
 import matplotlib.pyplot as plt
 import numpy
+import time
 
 RF_filename = 'L11-5V.json'
 
@@ -69,6 +70,8 @@ if "__main__" == __name__:
 
     # For each rx element, we need to calculate the correct delay
     # for each depth from each possible tx element
+    task_start_time = time.process_time()
+
     for rx_element_index in range(num_elements):
         print('calculating delay matrix for element', rx_element_index, flush=True)
         rx_element_center = element_centers[rx_element_index]
@@ -101,6 +104,9 @@ if "__main__" == __name__:
                      rf_data_shifted[sample_index, tx_element_index] = rf_data[sample_index + round(delay), tx_element_index]
 
         beamformed_rf_data[:, rx_element_index] = rf_data_shifted.sum(axis=1, dtype='float')
+
+    task_elapsed_time = time.process_time() - task_start_time
+    print("task elapsed time, sec:", task_elapsed_time)
 
     beamformed_rf_data_db = 20 * numpy.log(numpy.abs(beamformed_rf_data))
     fig2, ax2 = plt.subplots()
