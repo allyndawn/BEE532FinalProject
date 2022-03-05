@@ -1,4 +1,6 @@
-import beamformers.das
+import beamformers.delayandsum
+import beamformers.minimumvariance
 
 if "__main__" == __name__:
-    beamformers.das.run()
+    # beamformers.delayandsum.run()
+    beamformers.minimumvariance.run()
