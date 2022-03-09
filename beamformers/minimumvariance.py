@@ -48,6 +48,7 @@ def run():
         cf_numerator[:v_short_rows, line_index] = numpy.sum(v_short, 1) * numpy.sum(v_short, 1)
 
         cf[:v_short_rows, line_index] = cf_numerator[:v_short_rows, line_index] / cf_denominator[:v_short_rows, line_index]
+        # TBD TODO zero NaN in the cf matrix
 
         # apply the CF to each element's data
         for element_index in range(number_of_active_elements): # 0 to 63
@@ -55,10 +56,13 @@ def run():
 
         # add white noise
 
+        # calculate the spatial correlation matrix
 
         # apply diagonal loading
 
-    # find the envelope
+        # calculate the beamformer output
+
+        # find the envelope for this line
 
     # normalize the image
 
