@@ -55,10 +55,26 @@ def run():
             v_short[:, element_index] = cf[:v_short_rows, line_index] * v_short[:, element_index]
 
         # add white noise
+        # skipped for now, not used in reference MATLAB project
+
+        # array steering vector (all ones)
+        a = numpy.zeros(number_of_active_elements) + 1
 
         # calculate the spatial correlation matrix
+        for apo_i in range(v_short_rows):
+            u = numpy.zeros((number_of_active_elements, 1))
+            u[:,0] = v_short[apo_i, :]
+            u = u[:]
+            R = u * u.T
 
-        # apply diagonal loading
+            # apply diagonal loading
+            delta = 1.0 / number_of_active_elements
+            R = R + (delta * numpy.trace(R)) * numpy.eye(number_of_active_elements)
+            Rinv = numpy.linalg.inv(R)
+            w = Rinv * a / (numpy.transpose(a) * Rinv * a)
+
+            v = numpy.zeros((number_of_active_elements, 1))
+            v[apo_i, :] = numpy.transpose(w) * u # THIS IS NOT QUITE RIGHT BUT CLOSE
 
         # calculate the beamformer output
 
