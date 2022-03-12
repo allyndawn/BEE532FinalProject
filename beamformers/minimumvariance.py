@@ -2,20 +2,22 @@
 # 
 
 import json
+import matplotlib as mpl
+import matplotlib.pyplot as plt
 import numpy
 
 def run():
-    print("GNDN")
-
     number_of_lines = 204
     number_of_active_elements = 64
-    max_samples_per_line = 2122
+    max_samples_per_line = 2122 # TODO calculate from lines in the data, don't hardcode
 
     # Initialize cf_denominator and cf_numerator to have the same number of
     # rows as v_short and the same number of columns as lines in the image
     cf_denominator = numpy.zeros((max_samples_per_line, number_of_lines))
     cf_numerator = numpy.zeros((max_samples_per_line, number_of_lines))
     cf = numpy.zeros((max_samples_per_line, number_of_lines))
+
+    final_image = numpy.zeros((max_samples_per_line, number_of_lines))
 
     # for each line in the image
     for line_index in range(number_of_lines): # 0 to 203
@@ -55,12 +57,13 @@ def run():
             v_short[:, element_index] = cf[:v_short_rows, line_index] * v_short[:, element_index]
 
         # add white noise
-        # skipped for now, not used in reference MATLAB project
+        # skipped for now, surprisingly not used in reference MATLAB project
 
         # array steering vector (all ones)
         a = numpy.zeros((number_of_active_elements, 1)) + 1
 
         # calculate the spatial correlation matrix
+        # and build the image line
         v = numpy.zeros((v_short_rows, 1))
         for apo_i in range(v_short_rows):
             print(apo_i, 'of', v_short_rows)
@@ -85,13 +88,21 @@ def run():
             w = Rinv_a / at_Rinv_a # 64x1
             v[apo_i, :] = numpy.transpose(w) @ u
 
-        # v is 2122ish x 1
-
-        # calculate the beamformer output
-
-        # find the envelope for this line
+        # Add this line to the image
+        final_image[:v_short_rows, [line_index]] = v
 
     # normalize the image
 
-    # plot the image
+    # do logarithmic compression
 
+    # plot the image
+    final_image_array = numpy.array(final_image)
+    final_image_db = 20 * numpy.log(numpy.abs(final_image_array))
+
+    fig1, ax1 = plt.subplots()
+    ax1.imshow(final_image_db, cmap='gray')
+    ax1.set_facecolor("black")
+    ax1.set_xlabel('Line number')
+    ax1.set_ylabel('Discretized depth')
+    fig1.suptitle('Beamformed RF')
+    plt.show()
