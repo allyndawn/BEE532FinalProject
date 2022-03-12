@@ -36,7 +36,6 @@ def run():
         t_start = data['t_start']
         v_short_rows = len(data['v_short'])
         v_short = numpy.array(data['v_short'])
-        print(t_start)
 
         # Initialize pline_short to have the same number of
         # rows as v_short and the same number of columns as active elements
@@ -66,7 +65,6 @@ def run():
         # and build the image line
         v = numpy.zeros((v_short_rows, 1))
         for apo_i in range(v_short_rows):
-            print(apo_i, 'of', v_short_rows)
             u = numpy.zeros((number_of_active_elements, 1))
             u[:,0] = v_short[apo_i, :]
             u = u[:] # u is 64x1
@@ -92,6 +90,10 @@ def run():
         final_image[:v_short_rows, [line_index]] = v
 
     # normalize the image
+    final_image = numpy.nan_to_num(final_image)
+    max_image = numpy.max(numpy.max(final_image))
+    print("max_image=", max_image)
+    final_image = final_image / max_image
 
     # do logarithmic compression
 
