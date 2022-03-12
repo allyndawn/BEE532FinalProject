@@ -10,6 +10,7 @@ def run():
     number_of_lines = 204
     number_of_active_elements = 64
     max_samples_per_line = 2122 # TODO calculate from lines in the data, don't hardcode
+    line_sampling_rate = 40000000
 
     # Initialize cf_denominator and cf_numerator to have the same number of
     # rows as v_short and the same number of columns as lines in the image
@@ -18,6 +19,7 @@ def run():
     cf = numpy.zeros((max_samples_per_line, number_of_lines))
 
     final_image = numpy.zeros((max_samples_per_line, number_of_lines))
+    line_start_time = numpy.zeros(number_of_lines)
 
     # for each line in the image
     for line_index in range(number_of_lines): # 0 to 203
@@ -87,22 +89,28 @@ def run():
             v[apo_i, :] = numpy.transpose(w) @ u
 
         # Add this line to the image
+        line_start_time[line_index] = t_start
         final_image[:v_short_rows, [line_index]] = v
 
     # normalize the image
     final_image = numpy.nan_to_num(final_image)
     max_image = numpy.max(numpy.max(final_image))
-    print("max_image=", max_image)
     final_image = final_image / max_image
 
+    # Time align each line
+    final_image_time_aligned = numpy.zeros((max_samples_per_line * 2, number_of_lines))
+    for line_index in range(number_of_lines): # 0 to 203
+        time_offset = int(numpy.trunc(line_start_time[line_index] * line_sampling_rate))
+        final_image_time_aligned[time_offset:time_offset + v_short_rows, line_index] = final_image[:, line_index]
+
     # do logarithmic compression
+    final_image_array = numpy.array(final_image_time_aligned)
+    final_image_db = 20 * numpy.log(numpy.abs(final_image_array))
+    final_image_db = final_image_db + 60 # dynamic range
 
     # plot the image
-    final_image_array = numpy.array(final_image)
-    final_image_db = 20 * numpy.log(numpy.abs(final_image_array))
-
     fig1, ax1 = plt.subplots()
-    ax1.imshow(final_image_db, cmap='gray')
+    ax1.imshow(final_image_db, cmap='gray', aspect='auto', vmin=0, vmax=60)
     ax1.set_facecolor("black")
     ax1.set_xlabel('Line number')
     ax1.set_ylabel('Discretized depth')
