@@ -58,23 +58,34 @@ def run():
         # skipped for now, not used in reference MATLAB project
 
         # array steering vector (all ones)
-        a = numpy.zeros(number_of_active_elements) + 1
+        a = numpy.zeros((number_of_active_elements, 1)) + 1
 
         # calculate the spatial correlation matrix
+        v = numpy.zeros((v_short_rows, 1))
         for apo_i in range(v_short_rows):
+            print(apo_i, 'of', v_short_rows)
             u = numpy.zeros((number_of_active_elements, 1))
             u[:,0] = v_short[apo_i, :]
-            u = u[:]
-            R = u * u.T
+            u = u[:] # u is 64x1
+            ut = numpy.transpose(u) # ut is 1x64
+            R = u @ numpy.transpose(u) # R is 64x64
 
             # apply diagonal loading
             delta = 1.0 / number_of_active_elements
-            R = R + (delta * numpy.trace(R)) * numpy.eye(number_of_active_elements)
-            Rinv = numpy.linalg.inv(R)
-            w = Rinv * a / (numpy.transpose(a) * Rinv * a)
+            R_diagonal_sum = numpy.trace(R)
+            R = R + (delta * R_diagonal_sum) * numpy.eye(number_of_active_elements) # R is 64x64
+            Rinv = numpy.linalg.inv(R) # Ri is 64x64
 
-            v = numpy.zeros((number_of_active_elements, 1))
-            v[apo_i, :] = numpy.transpose(w) * u # THIS IS NOT QUITE RIGHT BUT CLOSE
+            # Careful! The * operator on two Numpy matrices is equivalent to the .* operator in Matlab
+            # Use numpy.dot or @ for matrix multiplication!
+            at = numpy.transpose(a)
+            at_Rinv_a = at @ Rinv @ a # 1x1
+
+            Rinv_a = Rinv @ a
+            w = Rinv_a / at_Rinv_a # 64x1
+            v[apo_i, :] = numpy.transpose(w) @ u
+
+        # v is 2122ish x 1
 
         # calculate the beamformer output
 
